@@ -10,6 +10,30 @@
 - **Lerncoaches** sehen in der Lerndoku unter **Portfolios** die eingereichten Einträge und geben eine Rückmeldung mit Status: Rückmeldung, bitte überarbeiten oder abgeschlossen.
 - **Alles liegt in Moodle**: Einträge und Rückmeldungen in eigenen Plugin-Tabellen, Anhänge im Moodle-Dateisystem, mit Datenschutz-Export und -Löschung.
 
+### Einblick
+
+**Lernende: die Mappe eines Kurses.** Register mit Zählern, Status jedes Eintrags (Entwurf, eingereicht, bitte überarbeiten …) und neue Rückmeldungen auf einen Blick.
+
+![Portfolio der Lernenden](docs/img/portfolio-lernende.png)
+
+**Lernende: ein Eintrag mit Rückmeldung.** Antworten auf die Leitfragen, Selbsteinschätzung, Anhänge aus Moodle, Links und die Rückmeldung des Lerncoachs. Bei „Bitte überarbeiten“ kann der Eintrag geändert und erneut eingereicht werden.
+
+![Portfolio-Eintrag mit Rückmeldung](docs/img/portfolio-eintrag.png)
+
+**Lernende: neuer Eintrag.** Erst wählen, was abgelegt wird, dann die passenden Leitfragen beantworten. Für Lernstrategien gibt es Vorschläge.
+
+![Neuen Portfolio-Eintrag anlegen](docs/img/portfolio-neuer-eintrag.png)
+
+**Lerncoach: Portfolios eines Kurses.** Alle Lernenden mit offenen, zu überarbeitenden und abgeschlossenen Einträgen, darunter die neu eingereichten Einträge mit Rückmeldung und Status.
+
+![Portfolios in der Lerndoku](docs/img/portfolio-lerncoach.png)
+
+**Auf dem Handy.**
+
+<img src="docs/img/portfolio-mobil.png" alt="Portfolio auf dem Handy" width="300">
+
+Die Namen in den Bildern sind erfunden (Demo-Modus der App).
+
 Details: [API-Vertrag, Abschnitt Portfolio](docs/api-v1.md), [ADR 0009](docs/adr/0009-portfolio-im-plugin.md), [Anleitung](docs/anleitung/app-gopilot.md). Das Plugin wird wie im Original installiert ([docs/installation.md](docs/installation.md)); ein bestehendes GoPilot 0.6.0 wird per Moodle-Upgrade auf 0.7.0 aktualisiert.
 
 ---
