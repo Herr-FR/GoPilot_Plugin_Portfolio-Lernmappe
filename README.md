@@ -11,6 +11,10 @@
 - **Verbindung zum [MMBbS Teaching Assistant](https://github.com/Herr-FR/Gopilot_teaching-assistent)**: Im Check-in und Check-out am Beamer zeigt der Teaching Assistant einen QR-Code, der bei den Lernenden einen vorausgefüllten Portfolio-Eintrag öffnet (Lernstrategie des Tages bzw. Lerntagebuch mit den Check-out-Fragen). Beide Werkzeuge nutzen dieselbe Liste von Lernstrategien. Lehrkräfte finden den Teaching Assistant im Menü unter **Unterrichtsassistent**. Die Werkzeuge bleiben getrennt: Der Teaching Assistant speichert weiterhin nichts auf einem Server.
 - **Alles liegt in Moodle**: Einträge und Rückmeldungen in eigenen Plugin-Tabellen, Anhänge im Moodle-Dateisystem, mit Datenschutz-Export und -Löschung.
 
+### Download
+
+**[release/local_gopilot-0.7.0.zip](release/local_gopilot-0.7.0.zip)**: das Moodle-Plugin `local_gopilot` 0.7.0 mit der Portfolio-Lernmappe als fertiges ZIP. Installation in Moodle unter **Website-Administration → Plugins → Plugin installieren** (ZIP hochladen) oder durch Entpacken nach `local/gopilot`. Ein vorhandenes GoPilot 0.6.0 wird dabei auf 0.7.0 aktualisiert, die bisherigen Daten bleiben erhalten. Die App wird wie in [docs/installation.md](docs/installation.md) beschrieben gebaut, weil beim Bauen die Moodle-Adresse eingetragen wird.
+
 ### Mitwirkende
 
 | Person | Beitrag |
