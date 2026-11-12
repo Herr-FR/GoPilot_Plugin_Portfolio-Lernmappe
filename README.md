@@ -139,7 +139,7 @@ Plugin und App halten sich an den API-Vertrag in [docs/api-v1.md](docs/api-v1.md
 
 Der Workflow [.github/workflows/pages.yml](.github/workflows/pages.yml) baut die App bei jedem Push auf `main`, der `app/` ändert, und veröffentlicht sie unter https://herr-fr.github.io/GoPilot_Plugin_Portfolio-Lernmappe/ (im Original: https://jtuttas.github.io/gopilot/). Beim ersten Lauf schaltet der Workflow GitHub Pages selbst ein. In diesem Repository ist `https://service.joerg-tuttas.de/moodle` als Moodle voreingestellt; die Repository-Variable `MOODLE_URL` überschreibt das (`demo` = Demo-Modus). Manuell starten geht über **Actions → App auf GitHub Pages → Run workflow**.
 
-- **Ohne weitere Einstellung** läuft die App dort im **Demo-Modus** mit Beispieldaten (Anmeldung mit `ada`, `ben`, `can` oder `lena` und beliebigem Kennwort).
+- **Ohne weitere Einstellung** spricht die App in diesem Repository mit `https://service.joerg-tuttas.de/moodle` (im Original: Demo-Modus). Mit der Repository-Variable `MOODLE_URL` = `demo` läuft sie im **Demo-Modus** mit Beispieldaten (Anmeldung mit `ada`, `ben`, `can` oder `lena` und beliebigem Kennwort).
 - **Mit echtem Moodle:** unter **Settings → Secrets and variables → Actions → Variables** die Repository-Variable `MOODLE_URL` anlegen, z. B. `https://moodle.schule.de`, und den Workflow neu starten. Das Moodle muss per HTTPS aus dem Internet erreichbar sein und wie in [docs/installation.md](docs/installation.md) eingerichtet sein; ein lokales Test-Moodle auf `localhost` funktioniert von GitHub Pages aus nicht.
 
 ## Betrieb
