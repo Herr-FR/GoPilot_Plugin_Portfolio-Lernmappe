@@ -1,0 +1,354 @@
+# API-Vertrag Version 1 (Dienst `gopilot`)
+
+Verbindliche Schnittstelle zwischen Plugin `local_gopilot` und App. Plugin (`classes/external/*`) und App (`app/src/api/`) halten sich genau an diese Namen und Typen. Änderungen zuerst hier eintragen.
+
+## Allgemeines
+
+- Aufruf: `POST {moodle}/webservice/rest/server.php`, `Content-Type: application/x-www-form-urlencoded`, Felder `wstoken`, `wsfunction`, `moodlewsrestformat=json` und die Parameter. Listen und Objekte in Moodle-Notation: `cmids[0]=5&cmids[1]=7`, `courses[0][courseid]=2&courses[0][selfassessments][0][level]=3`.
+- Fehler: Moodle liefert HTTP 200 mit `{"exception": "...", "errorcode": "...", "message": "..."}`. Die App wirft dann einen Fehler mit `message`. Bei `errorcode` `invalidtoken` oder `accessexception` meldet die App ab.
+- Anmeldung: `POST {moodle}/login/token.php` mit `username`, `password`, `service=gopilot`. Antwort `{"token": "..."}` oder `{"error": "...", "errorcode": "..."}`.
+- **Woche** (`week`): Datum des Montags als Zeichenkette `YYYY-MM-DD`, ausgewertet in der Zeitzone der Moodle-Instanz (`core_date::get_server_timezone()`). Das Plugin prüft, dass es ein Montag ist (`invalidweek`). Eine Woche ist **abgeschlossen**, wenn ihr Sonntag 23:59:59 vorbei ist.
+- Zeitpunkte sind Unix-Sekunden (`int`), `0` heißt „nicht gesetzt“.
+- Freitexte sind reiner Text (`PARAM_TEXT`), keine HTML-Formatierung.
+- Booleans kommen als `true`/`false` (PARAM_BOOL), Parameter als `0`/`1`.
+
+## Gemeinsame Strukturen
+
+### `step` (Lernschritt)
+
+| Feld | Typ | Bedeutung |
+|---|---|---|
+| `cmid` | int | Kursmodul-ID |
+| `courseid` | int | |
+| `sectionid` | int | Lernpfad (Abschnitt) |
+| `name` | string | Name der Aktivität |
+| `modname` | string | z. B. `page`, `assign`, `quiz` |
+| `url` | string | Link zur Aktivität in Moodle |
+| `tracked` | bool | hat Abschlussbedingung |
+| `completed` | bool | erledigt (inkl. bestanden) |
+| `manual` | bool | Lernende dürfen selbst abhaken (`COMPLETION_TRACKING_MANUAL`) |
+| `expected` | int | Soll-Termin: `completionexpected`, sonst Fälligkeitsdatum (`assign.duedate`, `quiz.timeclose`), sonst 0 |
+| `overdue` | bool | `tracked`, `expected > 0`, vorbei und nicht erledigt (seit 0.4.1 nur mit Abschlussverfolgung) |
+| `meta` | `meta` | Pfad-Metadaten |
+
+Nur sichtbare, für die Person verfügbare Kursmodule, ohne Textfelder (`label`) und ohne Abschnitt 0.
+
+### `meta` (Pfad-Metadaten)
+
+| Feld | Typ | Bedeutung |
+|---|---|---|
+| `phase` | string | frei, z. B. „Informieren“, leer = keine |
+| `duration` | int | Minuten, 0 = keine Angabe |
+| `level` | int | Niveau 0 = keine Angabe, 1 Basis, 2 Standard, 3 Experte |
+
+### `ampel`
+
+| Feld | Typ | Bedeutung |
+|---|---|---|
+| `courseid` | int | |
+| `colour` | string | `green`, `yellow`, `red`; `none`, wenn kein Signal aktiv ist |
+| `timecomputed` | int | |
+| `signals` | list of `signal` | immer alle vier, in der Reihenfolge `plan`, `backlog`, `reflection`, `selfassessment` |
+
+`signal`: `key` (string, s. o.), `active` (bool, ob das Signal auswertbar ist), `colour` (`green`/`yellow`/`red`/`none`), `value` (int, Rohwert: Prozent, Anzahl überfälliger Schritte, Anzahl Wochen, Stufe 1–4; 0 wenn inaktiv), `reason` (string, deutscher Begründungstext für die Anzeige, z. B. „2 von 6 geplanten Lernschritten erledigt (33 %)“, bei inaktiv z. B. „Kein Lernschritt dieses Kurses geplant“).
+
+### `feedbackentry`
+
+`id` int, `authorid` int, `authorname` string, `isteacher` bool (Autor:in ist nicht die:der Lernende), `message` string, `timecreated` int, `timeread` int (seit Plugin 0.6.0: wann die:der Lernende einen Eintrag der Lehrkraft gelesen hat, `0` = ungelesen; bei Einträgen der:des Lernenden immer `0`).
+
+### `selfassessment`
+
+`sectionid` int, `name` string (Name des Lernpfads), `level` int (0 = nicht angegeben, 1 sicher, 2 geht so, 3 unsicher, 4 komme nicht klar), `comment` string.
+
+### `courseweek` (Kursteil einer Woche)
+
+| Feld | Typ | Bedeutung |
+|---|---|---|
+| `courseid` | int | |
+| `fullname` | string | |
+| `reflection` | string | Kursreflexion, leer = keine |
+| `selfassessments` | list of `selfassessment` | für jeden Lernpfad mit geplanten Schritten dieser Woche ein Eintrag (auch wenn `level` 0) |
+| `feedback` | list of `feedbackentry` | Faden zu dieser Woche und diesem Kurs, älteste zuerst |
+
+### `week`
+
+| Feld | Typ | Bedeutung |
+|---|---|---|
+| `week` | string | Montag `YYYY-MM-DD` |
+| `closed` | bool | Woche abgeschlossen |
+| `goal` | string | Wochenziel |
+| `generalreflection` | string | allgemeine Reflexion |
+| `reflectedat` | int | Zeitpunkt der letzten gespeicherten Reflexion, 0 = keine |
+| `items` | list of `step` | geplante Lernschritte; bei abgeschlossenen Wochen ist `completed` der eingefrorene Stand zum Wochenende (`completedatclose`) |
+| `courses` | list of `courseweek` | jeder Kurs, in dem die Person `use` hat |
+
+## Funktionen für Lernende (Capability `local/gopilot:use`)
+
+### `local_gopilot_get_overview`
+
+Parameter: keine.
+
+Rückgabe:
+
+| Feld | Typ |
+|---|---|
+| `userid` | int |
+| `fullname` | string |
+| `currentweek` | string (Montag dieser Woche) |
+| `courses` | list: `id`, `shortname`, `fullname`, `canuse` bool, `cancoach` bool, `canconfigure` bool, `progress` (`completed` int, `total` int über alle Lernschritte mit Abschlussbedingung), `ampel` (`ampel`, nur sinnvoll bei `canuse`; sonst `colour` = `none`) |
+| `week` | `week` (aktuelle Woche) |
+| `newfeedback` | list: `id`, `courseid`, `coursename`, `week`, `authorname`, `message`, `timecreated`. Ungelesene Einträge von Lehrkräften in den eigenen Wochen, nur Kurse mit `use`, neueste zuerst (seit Plugin 0.6.0) |
+
+Alle Kurse, in denen die Person `use`, `coach` oder `configure` hat. Die Ampel wird beim Aufruf neu berechnet und gespeichert.
+
+### `local_gopilot_get_paths`
+
+Parameter: `courseid` int.
+
+Rückgabe: `course` (`id`, `fullname`), `paths`: list of `sectionid`, `section` (Nummer), `name`, `summary` (Text ohne HTML), `meta` (`meta` des Abschnitts), `completed` int, `total` int, `steps` (list of `step`).
+
+### `local_gopilot_get_week`
+
+Parameter: `week` string.
+
+Rückgabe: `week`.
+
+### `local_gopilot_save_plan`
+
+Parameter: `week` string, `goal` string, `cmids` list of int.
+
+Ersetzt die Planeinträge der Woche. Erlaubt nur für die aktuelle und künftige Wochen (`weekclosed`). Jedes `cmid` muss in einem Kurs mit `use` liegen. Rückgabe: `week`.
+
+### `local_gopilot_save_reflection`
+
+Parameter: `week` string, `generalreflection` string, `courses` list of: `courseid` int, `reflection` string, `selfassessments` list of (`sectionid` int, `level` int 0–4, `comment` string).
+
+Erlaubt für die aktuelle Woche und die vorige Woche (Reflexion am Wochenende oder Montag danach), sonst `reflectionclosed`. Setzt `reflectedat`. Löst Ereignis und Benachrichtigung an die Kurslehrkräfte aus und berechnet die Ampel neu. Rückgabe: `week`.
+
+### `local_gopilot_get_biography`
+
+Parameter: `page` int (ab 0), `perpage` int (Standard 10).
+
+Rückgabe: `total` int (Anzahl Wochen mit Daten), `weeks` list of `week`, neueste zuerst. Nur Wochen, in denen es einen Plan, ein Ziel oder eine Reflexion gibt.
+
+## Funktionen für den Lerncoach (Capability `local/gopilot:coach` im Kurs)
+
+### `local_gopilot_get_lerndoku`
+
+Parameter: `courseid` int.
+
+Rückgabe: `course` (`id`, `fullname`), `currentweek` string, `learners` list of:
+
+| Feld | Typ |
+|---|---|
+| `userid` | int |
+| `fullname` | string |
+| `ampel` | `ampel` (neu berechnet) |
+| `progress` | `completed`, `total` |
+| `lastreflection` | `week` string (leer = nie), `text` string (Kursreflexion, auf 200 Zeichen gekürzt) |
+| `unreadfeedback` | int (0 in V1, reserviert) |
+| `cohorts` | list of `id` int, `name` string: sichtbare globale Gruppen (z. B. Klassen), nach Name sortiert; leer = keine |
+| `thisweek` | `goal` string (Wochenziel der laufenden Woche, auf 200 Zeichen gekürzt), `planned` int (geplante Lernschritte dieses Kurses), `completed` int (davon jetzt erledigt), `plannedall` int (geplante Lernschritte aller Kurse); seit 0.5.0 |
+
+Lernende = alle mit `use` im Kurs.
+
+### `local_gopilot_get_learner`
+
+Parameter: `courseid` int, `userid` int.
+
+Rückgabe: `learner` (`id`, `fullname`), `ampel`, `weeks` list of `learnerweek`, neueste zuerst, nur Wochen mit Daten:
+
+`learnerweek`: `week` string, `closed` bool, `goal` string, `generalreflection` string, `reflectedat` int, `items` (list of `step`, nur Lernschritte dieses Kurses), `reflection` string, `selfassessments`, `feedback`.
+
+Wochenziel und allgemeine Reflexion sind für jeden Lerncoach eines Kurses der Person lesbar, alles andere nur für diesen Kurs.
+
+### `local_gopilot_add_feedback`
+
+Parameter: `courseid` int, `userid` int (die:der Lernende), `week` string, `message` string.
+
+Auch die:der Lernende selbst darf antworten (`use` im Kurs und `userid` = eigene ID), der Faden ist ein Gespräch. Benachrichtigt die jeweils andere Seite. Rückgabe: `feedbackentry`.
+
+### `local_gopilot_mark_feedback_read`
+
+Seit Plugin 0.6.0. Parameter: `ids` list of int (Feedback-Einträge).
+
+Setzt `timeread` für die Einträge, die in den eigenen Wochen der aufrufenden Person von jemand anderem geschrieben wurden und noch ungelesen sind; andere IDs werden ignoriert. Die App ruft das auf, wenn die:der Lernende einen Faden sieht oder auf der Startseite **Gelesen** wählt. Rückgabe: `marked` int (Anzahl markierter Einträge).
+
+## Funktionen für Kurseinstellungen (Capability `local/gopilot:configure`)
+
+### `local_gopilot_get_courseconfig`
+
+Parameter: `courseid` int.
+
+Rückgabe:
+
+| Feld | Typ |
+|---|---|
+| `courseid` | int |
+| `usedefaults` | bool |
+| `thresholds` | `thresholds` (wirksame Werte) |
+| `defaults` | `thresholds` (Standardwerte) |
+| `paths` | list of `sectionid`, `name`, `meta`, `steps` (list of `cmid`, `name`, `modname`, `meta`) |
+
+`thresholds`: `plangreen` int (70, ab diesem Prozentwert grün), `planyellow` int (40, ab diesem Wert gelb, darunter rot), `backlogyellow` int (2), `backlogred` int (4), `reflectionyellow` int (1), `reflectionred` int (2).
+
+### `local_gopilot_save_courseconfig`
+
+Parameter: `courseid` int, `usedefaults` bool, `thresholds` (`thresholds`, wird ignoriert bei `usedefaults`).
+
+Prüft `planyellow < plangreen`, `backlogyellow < backlogred`, `reflectionyellow < reflectionred`, sonst `invalidthresholds`. Rückgabe wie `get_courseconfig`.
+
+### `local_gopilot_save_pathmeta`
+
+Parameter: `courseid` int, `items` list of: `type` string (`section` oder `cm`), `id` int, `phase` string, `duration` int, `level` int.
+
+Rückgabe: `success` bool.
+
+## Portfolio (seit Plugin 0.7.0)
+
+Die Portfoliomappe sammelt pro Kurs Arbeitsergebnisse, Reflexionsbögen, Lernstrategien, Lernziele, erhaltenes Feedback, Lerntagebuch und Nachweise. Einträge gehören einer:einem Lernenden und einem Kurs. Ein Eintrag ist zuerst **Entwurf**; erst nach dem **Einreichen** sieht ihn der Lerncoach des Kurses und kann eine Rückmeldung mit Status geben. Entwürfe liefert das Plugin nicht an Lerncoaches aus. Wie überall in GoPilot verspricht die App trotzdem keine Privatheit (CONTEXT.md): Entwürfe heißen „noch nicht eingereicht“, nicht „privat“.
+
+Anhänge liegen im Moodle-Dateisystem (Kurskontext, Komponente `local_gopilot`, Dateibereich `portfolio`, `itemid` = Eintrags-ID). Hochgeladen werden sie Base64-kodiert über `local_gopilot_upload_portfolio_file`, damit nur die CORS-fähigen Endpunkte aus ADR 0007 nötig sind. Angezeigt werden sie über `pluginfile.php` mit Moodle-Sitzung; die App öffnet `file.url` über `local_gopilot_get_moodle_link`.
+
+### `portfolioentry`
+
+| Feld | Typ | Bedeutung |
+|---|---|---|
+| `id` | int | |
+| `userid` | int | Lernende:r |
+| `learnername` | string | voller Name der:des Lernenden |
+| `courseid` | int | |
+| `category` | string | `ergebnis`, `reflexion`, `strategie`, `ziel`, `feedback`, `tagebuch`, `nachweis` |
+| `title` | string | höchstens 255 Zeichen |
+| `entrydate` | string | `YYYY-MM-DD` oder leer |
+| `fields` | list of `key` string, `value` string | Antworten auf die Leitfragen der Kategorie (Schlüssel siehe App, `app/src/lib/portfolio.ts`) |
+| `selflevel` | int | Selbsteinschätzung wie in der Reflexion: 0 keine, 1 sicher, 2 geht so, 3 unsicher, 4 komme nicht klar |
+| `tags` | string | Schlagworte, frei |
+| `links` | list of `label` string, `url` string | externe Links, nur `http(s)` |
+| `status` | string | `draft` (Entwurf), `submitted` (eingereicht), `feedback` (Rückmeldung erhalten), `revise` (bitte überarbeiten), `done` (abgeschlossen) |
+| `revision` | int | Version, 0 = nie eingereicht, +1 bei jedem Einreichen |
+| `timesubmitted` | int | letztes Einreichen |
+| `timecreated` | int | |
+| `timemodified` | int | |
+| `unread` | bool | es gibt eine Rückmeldung, die die:der Lernende noch nicht gelesen hat |
+| `files` | list of `portfoliofile` | |
+| `feedback` | list of `portfoliofeedback` | älteste zuerst |
+
+`portfoliofile`: `id` int, `filename` string, `mimetype` string, `filesize` int, `url` string (pluginfile-Adresse).
+
+`portfoliofeedback`: `id` int, `authorid` int, `authorname` string, `message` string, `status` string (`feedback`, `revise`, `done`), `revision` int (Version, auf die sich die Rückmeldung bezieht), `timecreated` int.
+
+### `local_gopilot_get_portfolio` (Capability `use`)
+
+Parameter: `courseid` int.
+
+Eigene Einträge im Kurs, auch Entwürfe, zuletzt geänderte zuerst. Rückgabe: `course` (`id`, `fullname`), `maxfilesize` int (Bytes je Anhang), `entries` list of `portfolioentry`.
+
+### `local_gopilot_save_portfolio_entry` (Capability `use`)
+
+Parameter: `id` int (0 = neu), `courseid` int, `category` string, `title` string, `entrydate` string, `fields` list of `key`, `value`, `selflevel` int, `tags` string, `links` list of `label`, `url`.
+
+Legt einen Entwurf an oder ändert einen eigenen Eintrag im Status `draft` oder `revise`; sonst `portfolionoedit`. Fehler: `invalidportfoliocategory`, `portfoliotitlemissing`, `invalidportfoliodate`, `invalidportfoliolink`. Rückgabe: `portfolioentry`.
+
+### `local_gopilot_change_portfolio_status` (Capability `use`)
+
+Parameter: `id` int, `action` string.
+
+- `submit`: aus `draft` oder `revise` nach `submitted`, `revision` + 1. Benachrichtigt die Lerncoaches des Kurses (Provider `portfolio`).
+- `withdraw`: aus `submitted` zurück nach `draft`, nur solange es keine Rückmeldung gibt.
+
+Sonst `portfolioinvalidstatus`. Rückgabe: `portfolioentry`.
+
+### `local_gopilot_delete_portfolio_entry` (Capability `use`)
+
+Parameter: `id` int. Löscht einen eigenen Entwurf samt Anhängen, sonst `portfolionoedit`. Rückgabe: `success` bool.
+
+### `local_gopilot_upload_portfolio_file` (Capability `use`)
+
+Parameter: `entryid` int, `filename` string, `content` string (Base64).
+
+Nur für eigene Einträge im Status `draft` oder `revise`. Höchstens 10 Anhänge je Eintrag (`portfoliotoomanyfiles`) und `maxfilesize` Bytes je Datei (`portfoliofiletoobig`). Gleichnamige Dateien bekommen einen freien Namen. Hinweis für den Betrieb: Base64 vergrößert die Anfrage um ein Drittel, `post_max_size` in PHP muss entsprechend groß sein. Rückgabe: `portfoliofile`.
+
+### `local_gopilot_delete_portfolio_file` (Capability `use`)
+
+Parameter: `entryid` int, `fileid` int. Nur für eigene Einträge im Status `draft` oder `revise`. Rückgabe: `success` bool.
+
+### `local_gopilot_mark_portfolio_read` (Capability `use`)
+
+Parameter: `ids` list of int (Eintrags-IDs). Markiert die Rückmeldungen der eigenen Einträge als gelesen, andere IDs werden ignoriert. Rückgabe: `marked` int.
+
+### `local_gopilot_get_course_portfolios` (Capability `coach`)
+
+Parameter: `courseid` int, `userid` int (0 = alle).
+
+Rückgabe: `course` (`id`, `fullname`), `learners` list of `id` int, `fullname` string, `total` int (eingereichte Einträge), `open` int (`submitted`), `revise` int, `done` int, `lastsubmitted` int; alle Lernenden des Kurses, auch ohne Einträge. `entries` list of `portfolioentry`: eingereichte Einträge (Status ungleich `draft`) der gewählten Person bzw. aller Lernenden, offene zuerst.
+
+### `local_gopilot_add_portfolio_feedback` (Capability `coach`)
+
+Parameter: `id` int (Eintrag), `message` string, `status` string (`feedback`, `revise`, `done`).
+
+Nur für eingereichte Einträge (`portfolioinvalidstatus`). `message` darf nur bei `done` leer sein (`emptymessage`). Setzt den Status des Eintrags und benachrichtigt die:den Lernende:n (Provider `portfolio`). Rückgabe: `portfolioentry`.
+
+## Moodle öffnen (Capability: angemeldet)
+
+### `local_gopilot_get_moodle_link`
+
+Parameter: `url` string (Moodle-Seite, z. B. `step.url`).
+
+Rückgabe: `url` string (Link auf `{moodle}/local/gopilot/autologin.php?userid=…&key=…&urltogo=…`), `validuntil` int.
+
+Der Link meldet die Person beim Öffnen im Browser in Moodle an und leitet auf `url` weiter (ADR 0007). Der Schlüssel gilt einmal, 60 Sekunden lang und nur von der IP-Adresse, die ihn angefordert hat; ein neuer Aufruf ersetzt den alten Schlüssel. Fehler: `invalidmoodleurl` (Ziel außerhalb dieser Moodle-Instanz), `autologinnotforadmins` (Admins und Konten mit `moodle/site:config`), `autologinhttps` (Moodle ohne HTTPS; erlaubt nur für `localhost`). Die App fällt bei Fehlern auf den normalen Link zurück.
+
+## Push (Capability: angemeldet)
+
+### `local_gopilot_get_push_config`
+
+Rückgabe: `enabled` bool (VAPID-Schlüssel vorhanden), `publickey` string (VAPID, Base64-URL).
+
+### `local_gopilot_register_push`
+
+Parameter: `endpoint` string, `p256dh` string, `auth` string. Rückgabe: `success` bool. Ein Endpoint gehört höchstens einer Person (ersetzt alte Einträge).
+
+### `local_gopilot_unregister_push`
+
+Parameter: `endpoint` string. Rückgabe: `success` bool.
+
+## Funktionen aus dem Moodle-Kern im Dienst
+
+- `core_webservice_get_site_info`
+- `core_completion_update_activity_completion_status_manually` (`cmid`, `completed`): Lernschritt abhaken
+
+## Ampel-Regeln (Berechnung im Plugin)
+
+Für `(userid, courseid)` zum Zeitpunkt der Berechnung:
+
+1. **`plan` (Planerfüllung):** Bezugswoche ist die zuletzt abgeschlossene Woche. Aktiv, wenn die Person darin mindestens einen Lernschritt dieses Kurses geplant hat. Wert = Anteil erledigter geplanter Schritte (erledigt bis Sonntag 23:59:59, also `completedatclose` bzw. `timemodified` des Abschlusses ≤ Wochenende), ganzzahlig gerundet. Grün ab `plangreen`, gelb ab `planyellow`, sonst rot. Begründung „4 von 6 geplanten Lernschritten erledigt (67 %)“. Inaktiv: „Kein Lernschritt dieses Kurses geplant“.
+2. **`backlog` (Pfadrückstand):** immer aktiv, wenn der Kurs Abschlussverfolgung hat. Wert = Anzahl `overdue`-Lernschritte im Kurs. Gelb ab `backlogyellow`, rot ab `backlogred`. Fällig sind Lernschritte mit Abschlussverfolgung, deren Soll-Termin vorbei ist. Begründung „3 von 7 fälligen Lernschritten noch offen“, „Alle 7 fälligen Lernschritte erledigt“ bzw. „Noch kein Soll-Termin abgelaufen“.
+3. **`reflection` (fehlende Reflexion):** Es zählen nur abgeschlossene Wochen, in denen die Person Lernschritte dieses Kurses geplant hat (ADR 0008). Wert = Anzahl dieser Wochen in Folge (von der neuesten rückwärts) ohne Kursreflexion. Gelb ab `reflectionyellow`, rot ab `reflectionred`. Inaktiv ohne solche Woche: „Noch keine abgeschlossene Woche mit geplanten Lernschritten“.
+4. **`selfassessment`:** aktiv, wenn es eine Woche mit Selbsteinschätzung (`level` > 0) in diesem Kurs gibt. Wert = schlechteste Stufe der neuesten solchen Woche. 1–2 grün, 3 gelb, 4 rot. Begründung „Selbsteinschätzung „unsicher“ in LS 5.2 (KW 45)“.
+
+Gesamtfarbe = schlechteste Farbe der aktiven Signale, `none`, wenn keins aktiv ist.
+
+## Benachrichtigungen (Message-Provider des Plugins)
+
+| Provider | Empfänger | Auslöser |
+|---|---|---|
+| `feedback` | Lernende:r bzw. Lerncoach | neuer Eintrag im Feedback-Faden |
+| `reflection` | Lerncoaches des Kurses | Lernende:r speichert Kursreflexion (Standard: nur Web) |
+| `reflectiondue` | Lernende:r | geplante Aufgabe freitags 14 Uhr, Lernschritte des Kurses in dieser Woche geplant, noch keine Kursreflexion |
+| `ampelchange` | Lernende:r | Ampel eines Kurses wechselt auf Gelb oder Rot |
+| `portfolio` | Lerncoaches des Kurses bzw. Lernende:r | Portfolio-Eintrag eingereicht bzw. Rückmeldung zum Eintrag (seit 0.7.0) |
+
+Jede Nachricht wird zusätzlich als Web-Push an die Abos der Person verschickt (Titel = Betreff, Text = kurze Nachricht, `url` = Pfad in der App). Die App kennt diese Pfade als Routen, auch als Deep-Link:
+
+| Pfad | Ansicht | genutzt von |
+|---|---|---|
+| `/woche/{week}` | Woche mit Plan, Reflexion und Feedback-Faden | `feedback` an Lernende, `reflectiondue` |
+| `/lerndoku/{courseid}/{userid}` | Lernenden-Detail | `feedback` und `reflection` an den Lerncoach |
+| `/` | Start | `ampelchange` |
+| `/portfolio/{courseid}/{entryid}` | Portfolio-Eintrag der:des Lernenden | `portfolio` an Lernende |
+| `/lerndoku/{courseid}/{userid}/portfolio` | Portfolio einer:eines Lernenden für den Lerncoach | `portfolio` an den Lerncoach |
+
+Links in den Moodle-Nachrichten selbst (z. B. per E-Mail) setzt das Plugin nur, wenn die Admin-Einstellung `local_gopilot | appurl` die Adresse der App enthält.
+
+Das Plugin benötigt Moodle 4.2 oder neuer (`core_external\external_api`).

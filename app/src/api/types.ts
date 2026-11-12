@@ -1,0 +1,366 @@
+// Types for the GoPilot web service contract, version 1 (docs/api-v1.md).
+// Keep field names exactly as specified there.
+
+/** Monday of a planning week as 'YYYY-MM-DD'. */
+export type WeekString = string
+
+export type AmpelColour = 'green' | 'yellow' | 'red' | 'none'
+export type SignalKey = 'plan' | 'backlog' | 'reflection' | 'selfassessment'
+
+export interface Meta {
+  phase: string
+  /** Minutes, 0 = not set. */
+  duration: number
+  /** 0 = not set, 1 Basis, 2 Standard, 3 Experte. */
+  level: number
+}
+
+export interface Step {
+  cmid: number
+  courseid: number
+  sectionid: number
+  name: string
+  modname: string
+  url: string
+  tracked: boolean
+  completed: boolean
+  manual: boolean
+  /** Unix seconds, 0 = none. */
+  expected: number
+  overdue: boolean
+  meta: Meta
+}
+
+export interface Signal {
+  key: SignalKey
+  active: boolean
+  colour: AmpelColour
+  value: number
+  reason: string
+}
+
+export interface Ampel {
+  courseid: number
+  colour: AmpelColour
+  timecomputed: number
+  signals: Signal[]
+}
+
+export interface FeedbackEntry {
+  id: number
+  authorid: number
+  authorname: string
+  isteacher: boolean
+  message: string
+  timecreated: number
+  /** When the addressee read it, 0 = unread (plugin 0.6.0+; missing with older plugins). */
+  timeread?: number
+}
+
+/** Unread coaching feedback for the learner's start page (get_overview.newfeedback). */
+export interface NewFeedback {
+  id: number
+  courseid: number
+  coursename: string
+  week: WeekString
+  authorname: string
+  message: string
+  timecreated: number
+}
+
+/** 0 = not set, 1 sicher, 2 geht so, 3 unsicher, 4 komme nicht klar. */
+export type SelfAssessmentLevel = 0 | 1 | 2 | 3 | 4
+
+export interface SelfAssessment {
+  sectionid: number
+  name: string
+  level: number
+  comment: string
+}
+
+export interface CourseWeek {
+  courseid: number
+  fullname: string
+  reflection: string
+  selfassessments: SelfAssessment[]
+  feedback: FeedbackEntry[]
+}
+
+export interface Week {
+  week: WeekString
+  closed: boolean
+  goal: string
+  generalreflection: string
+  reflectedat: number
+  items: Step[]
+  courses: CourseWeek[]
+}
+
+export interface Progress {
+  completed: number
+  total: number
+}
+
+export interface OverviewCourse {
+  id: number
+  shortname: string
+  fullname: string
+  canuse: boolean
+  cancoach: boolean
+  canconfigure: boolean
+  progress: Progress
+  ampel: Ampel
+}
+
+export interface Overview {
+  userid: number
+  fullname: string
+  currentweek: WeekString
+  courses: OverviewCourse[]
+  week: Week
+  /** Unread coaching feedback, newest first (plugin 0.6.0+; missing with older plugins). */
+  newfeedback?: NewFeedback[]
+}
+
+export interface Path {
+  sectionid: number
+  section: number
+  name: string
+  summary: string
+  meta: Meta
+  completed: number
+  total: number
+  steps: Step[]
+}
+
+export interface PathsResponse {
+  course: { id: number; fullname: string }
+  paths: Path[]
+}
+
+export interface Biography {
+  total: number
+  weeks: Week[]
+}
+
+export interface LerndokuThisWeek {
+  /** Weekly goal, max. 200 characters; empty = none. */
+  goal: string
+  /** Planned steps of this course in the current week. */
+  planned: number
+  /** Of those, completed now. */
+  completed: number
+  /** Planned steps of all courses in the current week. */
+  plannedall: number
+}
+
+export interface LerndokuLearner {
+  userid: number
+  fullname: string
+  ampel: Ampel
+  progress: Progress
+  lastreflection: { week: WeekString; text: string }
+  unreadfeedback: number
+  /** Visible cohorts (global groups, e.g. classes), sorted by name; empty = none. */
+  cohorts: { id: number; name: string }[]
+  /** Current week: goal and planned steps of this course (plugin 0.5.0+; missing with older plugins). */
+  thisweek?: LerndokuThisWeek
+}
+
+export interface Lerndoku {
+  course: { id: number; fullname: string }
+  currentweek: WeekString
+  learners: LerndokuLearner[]
+}
+
+export interface LearnerWeek {
+  week: WeekString
+  closed: boolean
+  goal: string
+  generalreflection: string
+  reflectedat: number
+  items: Step[]
+  reflection: string
+  selfassessments: SelfAssessment[]
+  feedback: FeedbackEntry[]
+}
+
+export interface LearnerDetail {
+  learner: { id: number; fullname: string }
+  ampel: Ampel
+  weeks: LearnerWeek[]
+}
+
+export interface Thresholds {
+  plangreen: number
+  planyellow: number
+  backlogyellow: number
+  backlogred: number
+  reflectionyellow: number
+  reflectionred: number
+}
+
+export interface ConfigStep {
+  cmid: number
+  name: string
+  modname: string
+  meta: Meta
+}
+
+export interface ConfigPath {
+  sectionid: number
+  name: string
+  meta: Meta
+  steps: ConfigStep[]
+}
+
+export interface CourseConfig {
+  courseid: number
+  usedefaults: boolean
+  thresholds: Thresholds
+  defaults: Thresholds
+  paths: ConfigPath[]
+}
+
+export interface PathMetaItem {
+  type: 'section' | 'cm'
+  id: number
+  phase: string
+  duration: number
+  level: number
+}
+
+/** One-time link from local_gopilot_get_moodle_link (automatic Moodle login). */
+export interface MoodleLink {
+  url: string
+  validuntil: number
+}
+
+export interface PushConfig {
+  enabled: boolean
+  publickey: string
+}
+
+export interface SuccessResponse {
+  success: boolean
+}
+
+/** Result of core_completion_update_activity_completion_status_manually. */
+export interface CompletionUpdateResponse {
+  status: boolean
+  warnings?: { item?: string; itemid?: number; warningcode: string; message: string }[]
+}
+
+export interface SaveReflectionCourse {
+  courseid: number
+  reflection: string
+  selfassessments: { sectionid: number; level: number; comment: string }[]
+}
+
+export interface SaveReflectionParams {
+  week: WeekString
+  generalreflection: string
+  courses: SaveReflectionCourse[]
+}
+
+export interface SaveCourseConfigParams {
+  courseid: number
+  usedefaults: boolean
+  thresholds: Thresholds
+}
+
+// ---------------------------------------------------------------- Portfolio (plugin 0.7.0+)
+
+export type PortfolioCategory = 'ergebnis' | 'reflexion' | 'strategie' | 'ziel' | 'feedback' | 'tagebuch' | 'nachweis'
+export type PortfolioStatus = 'draft' | 'submitted' | 'feedback' | 'revise' | 'done'
+export type PortfolioFeedbackStatus = 'feedback' | 'revise' | 'done'
+
+export interface PortfolioField {
+  key: string
+  value: string
+}
+
+export interface PortfolioLink {
+  label: string
+  url: string
+}
+
+export interface PortfolioFile {
+  id: number
+  filename: string
+  mimetype: string
+  filesize: number
+  /** pluginfile address; open it via `openInMoodle`. */
+  url: string
+}
+
+export interface PortfolioFeedback {
+  id: number
+  authorid: number
+  authorname: string
+  message: string
+  status: PortfolioFeedbackStatus
+  revision: number
+  timecreated: number
+}
+
+export interface PortfolioEntry {
+  id: number
+  userid: number
+  learnername: string
+  courseid: number
+  category: PortfolioCategory
+  title: string
+  /** 'YYYY-MM-DD' or ''. */
+  entrydate: string
+  fields: PortfolioField[]
+  /** Same scale as the self-assessment in the reflection: 0 none, 1 sicher … 4 komme nicht klar. */
+  selflevel: number
+  tags: string
+  links: PortfolioLink[]
+  status: PortfolioStatus
+  /** 0 = never submitted. */
+  revision: number
+  timesubmitted: number
+  timecreated: number
+  timemodified: number
+  unread: boolean
+  files: PortfolioFile[]
+  feedback: PortfolioFeedback[]
+}
+
+export interface Portfolio {
+  course: { id: number; fullname: string }
+  /** Maximum size of one attachment in bytes. */
+  maxfilesize: number
+  entries: PortfolioEntry[]
+}
+
+export interface PortfolioLearner {
+  id: number
+  fullname: string
+  total: number
+  open: number
+  revise: number
+  done: number
+  lastsubmitted: number
+}
+
+export interface CoursePortfolios {
+  course: { id: number; fullname: string }
+  learners: PortfolioLearner[]
+  entries: PortfolioEntry[]
+}
+
+export interface SavePortfolioEntryParams {
+  /** 0 = new draft. */
+  id: number
+  courseid: number
+  category: PortfolioCategory
+  title: string
+  entrydate: string
+  fields: PortfolioField[]
+  selflevel: number
+  tags: string
+  links: PortfolioLink[]
+}

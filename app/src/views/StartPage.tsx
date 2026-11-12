@@ -1,0 +1,335 @@
+import {
+  Anchor,
+  Box,
+  Button,
+  Card,
+  Divider,
+  Group,
+  Progress,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core'
+import {
+  IconCalendarPlus,
+  IconCheck,
+  IconClipboardList,
+  IconMessageCircle,
+  IconMessageReply,
+  IconMessages,
+  IconTarget,
+} from '@tabler/icons-react'
+import { Link } from 'react-router'
+import { useMarkFeedbackRead, useOverview, useWeek } from '../api/hooks'
+import type { NewFeedback, Overview, OverviewCourse } from '../api/types'
+import { AmpelSummary } from '../components/Ampel'
+import { CourseHeading } from '../components/CourseHeading'
+import { courseColours } from '../lib/courseColours'
+import { Notice } from '../components/Notice'
+import { ErrorAlert, Loading } from '../components/QueryState'
+import { StepItem } from '../components/StepItem'
+import { rolesOf } from '../layout/nav'
+import { addWeeks, formatDateTime, isoWeek, weekdayIndex, weekTitle } from '../lib/week'
+
+function percent(done: number, total: number) {
+  return total > 0 ? Math.round((done / total) * 100) : 0
+}
+
+export function CourseProgress({ completed, total }: { completed: number; total: number }) {
+  const pct = percent(completed, total)
+  return (
+    <Stack gap={4}>
+      <Group justify="space-between">
+        <Text size="xs" c="dimmed">
+          Kursfortschritt
+        </Text>
+        <Text size="xs" c="dimmed">
+          {completed} von {total} Lernschritten ({pct} %)
+        </Text>
+      </Group>
+      <Progress value={pct} size="sm" aria-label={`Kursfortschritt ${pct} Prozent`} />
+    </Stack>
+  )
+}
+
+/** Unread coaching feedback, newest first: the first thing a learner sees. */
+function NewFeedbackCard({ entries, colours }: { entries: NewFeedback[]; colours: Map<number, string> }) {
+  const markRead = useMarkFeedbackRead()
+  if (entries.length === 0) return null
+  const title = entries.length === 1 ? 'Neue Nachricht von deiner Lehrkraft' : `${entries.length} neue Nachrichten von deinen Lehrkräften`
+  return (
+    <Card withBorder radius="md" padding="md" style={{ borderColor: 'var(--mantine-color-blue-5)', borderWidth: 2 }}>
+      <Group gap="xs" mb="sm" wrap="nowrap">
+        <IconMessages size={22} color="var(--mantine-color-blue-6)" aria-hidden style={{ flexShrink: 0 }} />
+        <Title order={3} size="h4">
+          {title}
+        </Title>
+      </Group>
+      <Stack gap="sm">
+        {entries.map((f) => (
+          <Box
+            key={f.id}
+            p="sm"
+            bg="var(--mantine-color-blue-light)"
+            style={{
+              borderRadius: 'var(--mantine-radius-md)',
+              borderLeft: `4px solid var(--mantine-color-${colours.get(f.courseid) ?? 'blue'}-6)`,
+            }}
+          >
+            <Group justify="space-between" gap="xs" wrap="wrap" mb={4}>
+              <Text size="xs" fw={600}>
+                {f.authorname} · {f.coursename} · KW {isoWeek(f.week).week}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {formatDateTime(f.timecreated)}
+              </Text>
+            </Group>
+            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+              {f.message}
+            </Text>
+            <Group gap="xs" mt="xs">
+              <Button
+                component={Link}
+                to={`/reflexion/${f.week}`}
+                size="xs"
+                leftSection={<IconMessageReply size={14} />}
+              >
+                Antworten
+              </Button>
+              <Button
+                size="xs"
+                variant="default"
+                leftSection={<IconCheck size={14} />}
+                onClick={() => markRead.mutate([f.id])}
+              >
+                Gelesen
+              </Button>
+            </Group>
+          </Box>
+        ))}
+      </Stack>
+    </Card>
+  )
+}
+
+function Prompts({ overview }: { overview: Overview }) {
+  const current = overview.currentweek
+  const previous = addWeeks(current, -1)
+  const prev = useWeek(previous)
+  const week = overview.week
+  const isWeekend = weekdayIndex(new Date()) >= 4
+  const nothingPlanned = week.items.length === 0 && !week.goal
+  const prevOpen =
+    prev.data &&
+    prev.data.reflectedat === 0 &&
+    (prev.data.items.length > 0 || prev.data.goal !== '')
+
+  return (
+    <Stack gap="sm">
+      {nothingPlanned && (
+        <Notice color="blue" icon={<IconCalendarPlus />} title="Woche planen">
+          <Stack gap="xs" align="flex-start">
+            <Text size="sm">Für diese Woche hast du noch nichts geplant. Such dir ein paar Lernschritte und ein Wochenziel aus.</Text>
+            <Button component={Link} to={`/plan/${current}`} size="xs">
+              Woche planen
+            </Button>
+          </Stack>
+        </Notice>
+      )}
+      {isWeekend && week.reflectedat === 0 && (
+        <Notice color="grape" icon={<IconMessageCircle />} title="Woche reflektieren">
+          <Stack gap="xs" align="flex-start">
+            <Text size="sm">Die Woche ist fast geschafft. Nimm dir ein paar Minuten für deine Reflexion.</Text>
+            <Button component={Link} to={`/reflexion/${current}`} size="xs" color="grape">
+              Woche reflektieren
+            </Button>
+          </Stack>
+        </Notice>
+      )}
+      {prevOpen && (
+        <Notice color="grape" icon={<IconMessageCircle />} title="Letzte Woche reflektieren">
+          <Stack gap="xs" align="flex-start">
+            <Text size="sm">Deine Reflexion zur letzten Woche fehlt noch. Du kannst sie jetzt nachholen.</Text>
+            <Button component={Link} to={`/reflexion/${previous}`} size="xs" color="grape" variant="light">
+              Letzte Woche reflektieren
+            </Button>
+          </Stack>
+        </Notice>
+      )}
+    </Stack>
+  )
+}
+
+function CurrentWeekCard({ overview }: { overview: Overview }) {
+  const week = overview.week
+  const colours = courseColours(overview.courses)
+  const done = week.items.filter((s) => s.completed).length
+  // Group by course in overview order; items of unknown courses go last.
+  const groups = [...overview.courses, { id: -1, fullname: 'Weitere Lernschritte' }]
+    .map((c) => ({
+      course: c,
+      items: week.items.filter((s) =>
+        c.id === -1 ? !overview.courses.some((o) => o.id === s.courseid) : s.courseid === c.id,
+      ),
+    }))
+    .filter((g) => g.items.length > 0)
+  return (
+    <Card withBorder radius="md" padding="md">
+      <Group justify="space-between" mb="xs" wrap="wrap">
+        <Title order={3} size="h4">
+          Diese Woche
+        </Title>
+        <Anchor component={Link} to={`/plan/${week.week}`} size="sm">
+          Plan bearbeiten
+        </Anchor>
+      </Group>
+      <Group gap="xs" wrap="nowrap" align="flex-start" mb="sm">
+        <IconTarget size={18} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+        <div>
+          <Text size="xs" c="dimmed">
+            Wochenziel
+          </Text>
+          <Text size="sm">{week.goal || 'Noch kein Wochenziel formuliert.'}</Text>
+        </div>
+      </Group>
+      <Divider mb="xs" />
+      {week.items.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          Noch keine Lernschritte geplant.
+        </Text>
+      ) : (
+        <>
+          <Text size="xs" c="dimmed" mb={4}>
+            {done} von {week.items.length} geplanten Lernschritten erledigt
+          </Text>
+          <Stack gap="sm">
+            {groups.map(({ course, items }) => {
+              const color = colours.get(course.id) ?? 'gray'
+              const groupDone = items.filter((s) => s.completed).length
+              return (
+                <Box
+                  key={course.id}
+                  component="section"
+                  aria-label={`Kurs ${course.fullname}`}
+                  pl="sm"
+                  pt={6}
+                  style={{ borderLeft: `4px solid var(--mantine-color-${color}-6)` }}
+                >
+                  <CourseHeading
+                    name={course.fullname}
+                    color={color}
+                    size="sm"
+                    as="p"
+                    right={
+                      <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                        {groupDone}/{items.length} erledigt
+                      </Text>
+                    }
+                  />
+                  <Stack gap={0} mt={2}>
+                    {items.map((s) => (
+                      <StepItem key={s.cmid} step={s} canTick={!week.closed} showMeta={false} />
+                    ))}
+                  </Stack>
+                </Box>
+              )
+            })}
+          </Stack>
+        </>
+      )}
+    </Card>
+  )
+}
+
+function CourseCard({ course, color }: { course: OverviewCourse; color: string }) {
+  return (
+    <Card withBorder radius="md" padding="md" style={{ borderLeft: `4px solid var(--mantine-color-${color}-6)` }}>
+      <Stack gap="sm">
+        <CourseHeading name={course.fullname} color={color} size="sm" as="h4" />
+        <CourseProgress {...course.progress} />
+        <AmpelSummary ampel={course.ampel} audience="learner" />
+        <Anchor component={Link} to={`/lernpfade/${course.id}`} size="sm">
+          Zu den Lernpfaden
+        </Anchor>
+      </Stack>
+    </Card>
+  )
+}
+
+export function StartPage() {
+  const overview = useOverview()
+  if (overview.isPending) return <Loading />
+  if (overview.isError) return <ErrorAlert error={overview.error} onRetry={() => overview.refetch()} />
+  const data = overview.data
+  const roles = rolesOf(data.courses)
+  const firstName = data.fullname.split(' ')[0]
+  const learnCourses = data.courses.filter((c) => c.canuse)
+  const coachCourses = data.courses.filter((c) => c.cancoach)
+  const colours = courseColours(data.courses)
+
+  return (
+    <Stack gap="md">
+      <div>
+        <Title order={2}>Hallo {firstName}!</Title>
+        <Text size="sm" c="dimmed">
+          {weekTitle(data.currentweek)}
+        </Text>
+      </div>
+
+      {roles.isLearner && (
+        <>
+          <NewFeedbackCard entries={data.newfeedback ?? []} colours={colours} />
+          <Prompts overview={data} />
+          <CurrentWeekCard overview={data} />
+          <Title order={3} size="h4">
+            Deine Kurse
+          </Title>
+          <Text size="xs" c="dimmed" mt={-10}>
+            Die Förder-Ampel ist ein Hinweis für dich, keine Bewertung. Nur du und die Lehrkräfte des Kurses sehen sie.
+          </Text>
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            {learnCourses.map((c) => (
+              <CourseCard key={c.id} course={c} color={colours.get(c.id) ?? 'blue'} />
+            ))}
+          </SimpleGrid>
+        </>
+      )}
+
+      {coachCourses.length > 0 && (
+        <>
+          <Title order={3} size="h4">
+            Deine Kurse als Lerncoach
+          </Title>
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            {coachCourses.map((c) => (
+              <Card key={c.id} withBorder radius="md" padding="md">
+                <Stack gap="xs">
+                  <Text fw={600} size="sm">
+                    {c.fullname}
+                  </Text>
+                  <Group gap="xs">
+                    <Button component={Link} to={`/lerndoku/${c.id}`} size="xs" leftSection={<IconClipboardList size={14} />}>
+                      Lerndoku
+                    </Button>
+                    {c.canconfigure && (
+                      <Button component={Link} to={`/kurseinstellungen/${c.id}`} size="xs" variant="default">
+                        Kurseinstellungen
+                      </Button>
+                    )}
+                  </Group>
+                </Stack>
+              </Card>
+            ))}
+          </SimpleGrid>
+        </>
+      )}
+
+      {data.courses.length === 0 && (
+        <Notice color="gray" title="Keine Kurse">
+          Du bist in keinem Kurs eingeschrieben, der GoPilot nutzt.
+        </Notice>
+      )}
+    </Stack>
+  )
+}
