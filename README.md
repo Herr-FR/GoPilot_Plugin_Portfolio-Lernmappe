@@ -47,6 +47,8 @@
 
 Die Namen in den Bildern sind erfunden (Demo-Modus der App).
 
+**Ausprobieren:** Die Demo mit Beispieldaten läuft unter https://herr-fr.github.io/GoPilot_Plugin_Portfolio-Lernmappe/ (Anmeldung als `ada` für Lernende oder `lena` für die Lehrkraft, beliebiges Kennwort).
+
 Details: [API-Vertrag, Abschnitt Portfolio](docs/api-v1.md), [ADR 0009](docs/adr/0009-portfolio-im-plugin.md), [Anleitung](docs/anleitung/app-gopilot.md). Das Plugin wird wie im Original installiert ([docs/installation.md](docs/installation.md)); ein bestehendes GoPilot 0.6.0 wird per Moodle-Upgrade auf 0.7.0 aktualisiert.
 
 ---
@@ -135,7 +137,7 @@ Plugin und App halten sich an den API-Vertrag in [docs/api-v1.md](docs/api-v1.md
 
 ## GitHub Pages
 
-Der Workflow [.github/workflows/pages.yml](.github/workflows/pages.yml) baut die App bei jedem Push auf `main`, der `app/` ändert, und veröffentlicht sie über GitHub Pages dieses Repositorys (im Original: https://jtuttas.github.io/gopilot/). Dafür muss GitHub Pages unter **Settings → Pages** auf „GitHub Actions“ stehen. Manuell starten geht über **Actions → App auf GitHub Pages → Run workflow**.
+Der Workflow [.github/workflows/pages.yml](.github/workflows/pages.yml) baut die App bei jedem Push auf `main`, der `app/` ändert, und veröffentlicht sie unter https://herr-fr.github.io/GoPilot_Plugin_Portfolio-Lernmappe/ (im Original: https://jtuttas.github.io/gopilot/). Beim ersten Lauf schaltet der Workflow GitHub Pages selbst ein. Manuell starten geht über **Actions → App auf GitHub Pages → Run workflow**.
 
 - **Ohne weitere Einstellung** läuft die App dort im **Demo-Modus** mit Beispieldaten (Anmeldung mit `ada`, `ben`, `can` oder `lena` und beliebigem Kennwort).
 - **Mit echtem Moodle:** unter **Settings → Secrets and variables → Actions → Variables** die Repository-Variable `MOODLE_URL` anlegen, z. B. `https://moodle.schule.de`, und den Workflow neu starten. Das Moodle muss per HTTPS aus dem Internet erreichbar sein und wie in [docs/installation.md](docs/installation.md) eingerichtet sein; ein lokales Test-Moodle auf `localhost` funktioniert von GitHub Pages aus nicht.
