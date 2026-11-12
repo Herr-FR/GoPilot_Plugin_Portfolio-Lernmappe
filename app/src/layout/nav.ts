@@ -5,6 +5,7 @@ import {
   IconDots,
   IconFolders,
   IconHome,
+  IconPresentation,
   IconMessageCircle,
   IconRoute,
   IconSettings,
@@ -12,6 +13,7 @@ import {
   type Icon,
 } from '@tabler/icons-react'
 import type { OverviewCourse } from '../api/types'
+import { teachingAssistantUrl } from '../config'
 
 export interface NavItem {
   to: string
@@ -19,6 +21,8 @@ export interface NavItem {
   icon: Icon
   /** Match only the exact path. */
   end?: boolean
+  /** `to` is an external address, opened in a new tab. */
+  external?: boolean
 }
 
 export interface Roles {
@@ -44,6 +48,10 @@ const PORTFOLIO: NavItem = { to: '/portfolio', label: 'Portfolio', icon: IconFol
 const BIO: NavItem = { to: '/lernbiografie', label: 'Lernbiografie', icon: IconTimeline }
 const LERNDOKU: NavItem = { to: '/lerndoku', label: 'Lerndoku', icon: IconClipboardList }
 const COURSESETTINGS: NavItem = { to: '/kurseinstellungen', label: 'Kurseinstellungen', icon: IconAdjustments }
+/** MMBbS Teaching Assistant for the classroom (separate tool, VITE_TEACHING_ASSISTANT_URL). */
+const TEACHING_ASSISTANT: NavItem | null = teachingAssistantUrl
+  ? { to: teachingAssistantUrl, label: 'Unterrichtsassistent', icon: IconPresentation, external: true }
+  : null
 const SETTINGS: NavItem = { to: '/einstellungen', label: 'Einstellungen', icon: IconSettings }
 const MORE: NavItem = { to: '/mehr', label: 'Mehr', icon: IconDots }
 
@@ -51,7 +59,11 @@ const MORE: NavItem = { to: '/mehr', label: 'Mehr', icon: IconDots }
 export function sidebarItems(r: Roles): { learner: NavItem[]; coach: NavItem[]; general: NavItem[] } {
   return {
     learner: r.isLearner ? [START, PATHS, PLAN, REFLECTION, PORTFOLIO, BIO] : [START],
-    coach: [...(r.isCoach ? [LERNDOKU] : []), ...(r.isConfigurer ? [COURSESETTINGS] : [])],
+    coach: [
+      ...(r.isCoach ? [LERNDOKU] : []),
+      ...(r.isConfigurer ? [COURSESETTINGS] : []),
+      ...(r.isCoach && TEACHING_ASSISTANT ? [TEACHING_ASSISTANT] : []),
+    ],
     general: [SETTINGS],
   }
 }
@@ -69,6 +81,7 @@ export function moreItems(r: Roles): NavItem[] {
     ...(r.isLearner ? [PORTFOLIO, BIO] : []),
     ...(r.isCoach ? [LERNDOKU] : []),
     ...(r.isConfigurer ? [COURSESETTINGS] : []),
+    ...(r.isCoach && TEACHING_ASSISTANT ? [TEACHING_ASSISTANT] : []),
     SETTINGS,
   ]
 }

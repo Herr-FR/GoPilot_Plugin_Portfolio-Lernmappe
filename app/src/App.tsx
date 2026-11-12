@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router'
 import { AppProviders } from './AppProviders'
 import { useAuth } from './auth/useAuth'
 import { Loading } from './components/QueryState'
@@ -30,6 +30,15 @@ const CourseSettingsPage = lazy(() =>
 )
 
 /** Push links use `/woche/<Montag>` (api-v1.md); they open the week's reflection. */
+/** Links from the Teaching Assistant use `/portfolio/neu/{kategorie}?name=…`; they open a pre-filled entry. */
+function PortfolioNewRedirect() {
+  const { kategorie } = useParams()
+  const { search } = useLocation()
+  const params = new URLSearchParams(search)
+  params.set('neu', kategorie ?? '')
+  return <Navigate to={`/portfolio?${params.toString()}`} replace />
+}
+
 function WeekRedirect() {
   const { week } = useParams()
   return <Navigate to={`/reflexion/${week ?? ''}`} replace />
@@ -55,6 +64,7 @@ export function AppRoutes() {
           <Route path="lerndoku/:courseid/:userid" element={<LearnerPage />} />
           <Route path="lerndoku/:courseid/:userid/portfolio" element={<LearnerPortfolioPage />} />
           <Route path="portfolio" element={<PortfolioIndexPage />} />
+          <Route path="portfolio/neu/:kategorie" element={<PortfolioNewRedirect />} />
           <Route path="portfolio/:courseid/:entryid?" element={<PortfolioPage />} />
           <Route path="kurseinstellungen/:courseid?" element={<CourseSettingsPage />} />
           <Route path="einstellungen" element={<SettingsPage />} />

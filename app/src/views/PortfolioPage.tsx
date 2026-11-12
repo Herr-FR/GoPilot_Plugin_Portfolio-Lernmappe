@@ -34,7 +34,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { errorMessage } from '../api/client'
 import {
   useChangePortfolioStatus,
@@ -61,7 +61,10 @@ import {
   isEditable,
   isHttpUrl,
   LEARNING_STRATEGIES,
+  parsePrefill,
   PORTFOLIO_CATEGORIES,
+  strategyByName,
+  type PortfolioPrefill,
 } from '../lib/portfolio'
 
 const ALL = 'alle'
@@ -75,22 +78,29 @@ function todayString(): string {
 /** Course choice for learners with more than one course. */
 export function PortfolioIndexPage() {
   const overview = useOverview()
+  // Keeps ?neu=… of a pre-filled entry (QR code from the Teaching Assistant) through the course choice.
+  const { search } = useLocation()
+  const prefill = parsePrefill(new URLSearchParams(search))
   if (overview.isPending) return <Loading />
   if (overview.isError) return <ErrorAlert error={overview.error} onRetry={() => overview.refetch()} />
   const courses = overview.data.courses.filter((c) => c.canuse)
-  if (courses.length === 1) return <Navigate to={`/portfolio/${courses[0].id}`} replace />
+  if (courses.length === 1) return <Navigate to={`/portfolio/${courses[0].id}${search}`} replace />
   return (
     <>
       <PageHeader
         title="Portfolio"
-        description="Deine Mappe pro Kurs: Arbeitsergebnisse, Reflexionen, Lernstrategien und Nachweise sammeln und mit deinem Lerncoach teilen."
+        description={
+          prefill
+            ? `In welchem Kurs möchtest du den Eintrag „${categoryInfo(prefill.category).one}“ anlegen?`
+            : 'Deine Mappe pro Kurs: Arbeitsergebnisse, Reflexionen, Lernstrategien und Nachweise sammeln und mit deinem Lerncoach teilen.'
+        }
       />
       {courses.length === 0 ? (
         <Text c="dimmed">Du bist in keinem Kurs als Lernende:r eingetragen.</Text>
       ) : (
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           {courses.map((c) => (
-            <Card key={c.id} withBorder radius="md" component={Link} to={`/portfolio/${c.id}`} padding="md">
+            <Card key={c.id} withBorder radius="md" component={Link} to={`/portfolio/${c.id}${search}`} padding="md">
               <Text fw={600}>{c.fullname}</Text>
             </Card>
           ))}
@@ -168,14 +178,18 @@ interface EditorState {
   status: PortfolioEntry['status']
 }
 
-function editorState(entry: PortfolioEntry | null, category: PortfolioCategory | null): EditorState {
+function editorState(
+  entry: PortfolioEntry | null,
+  category: PortfolioCategory | null,
+  prefill?: PortfolioPrefill | null,
+): EditorState {
   if (!entry) {
     return {
       id: 0,
-      category,
-      title: '',
+      category: prefill?.category ?? category,
+      title: prefill?.title ?? '',
       entrydate: todayString(),
-      answers: {},
+      answers: { ...prefill?.answers },
       selflevel: 0,
       tags: '',
       links: [],
@@ -200,16 +214,18 @@ function EntryEditor({
   courseid,
   entry,
   initialCategory,
+  prefill,
   maxfilesize,
   onClose,
 }: {
   courseid: number
   entry: PortfolioEntry | null
   initialCategory: PortfolioCategory | null
+  prefill?: PortfolioPrefill | null
   maxfilesize: number
   onClose: (savedId?: number) => void
 }) {
-  const [state, setState] = useState<EditorState>(() => editorState(entry, initialCategory))
+  const [state, setState] = useState<EditorState>(() => editorState(entry, initialCategory, prefill))
   const [pending, setPending] = useState<File[]>([])
   const [linkLabel, setLinkLabel] = useState('')
   const [linkUrl, setLinkUrl] = useState('')
@@ -364,15 +380,28 @@ function EntryEditor({
             const value = state.answers[q.key] ?? ''
             const onChange = (v: string) => set({ answers: { ...state.answers, [q.key]: v } })
             if (q.key === 'strategie' && cat.key === 'strategie') {
+              const known = strategyByName(value)
+              const description = known?.text ?? (value && value === prefill?.answers.strategie ? prefill.strategyText : '')
               return (
-                <Autocomplete
-                  key={q.key}
-                  label={q.label}
-                  placeholder={q.placeholder}
-                  data={LEARNING_STRATEGIES}
-                  value={value}
-                  onChange={onChange}
-                />
+                <Stack key={q.key} gap={6}>
+                  <Autocomplete
+                    label={q.label}
+                    placeholder={q.placeholder}
+                    data={LEARNING_STRATEGIES.map((s) => s.name)}
+                    value={value}
+                    onChange={onChange}
+                  />
+                  {description && (
+                    <Notice color="grape" icon={<IconInfoCircle />}>
+                      <Text size="sm">{description}</Text>
+                      {known?.link && (
+                        <Anchor href={known.link} target="_blank" rel="noopener noreferrer" size="sm">
+                          Mehr erfahren
+                        </Anchor>
+                      )}
+                    </Notice>
+                  )}
+                </Stack>
               )
             }
             return q.short ? (
@@ -658,7 +687,18 @@ export function PortfolioPage() {
   const portfolio = usePortfolio(courseid)
   const [category, setCategory] = useState<string>(ALL)
   const [search, setSearch] = useState('')
-  const [editor, setEditor] = useState<{ entry: PortfolioEntry | null } | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [editor, setEditor] = useState<{ entry: PortfolioEntry | null; prefill?: PortfolioPrefill | null } | null>(
+    () => {
+      const prefill = parsePrefill(searchParams)
+      return prefill ? { entry: null, prefill } : null
+    },
+  )
+
+  // A pre-filled entry was opened from a link: drop the parameters so a reload does not open it again.
+  useEffect(() => {
+    if (searchParams.has('neu')) setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const entries = useMemo(() => portfolio.data?.entries ?? [], [portfolio.data])
   const counts = useMemo(() => {
@@ -805,6 +845,7 @@ export function PortfolioPage() {
             courseid={courseid}
             entry={editor.entry ? (entries.find((e) => e.id === editor.entry!.id) ?? editor.entry) : null}
             initialCategory={cat?.key ?? null}
+            prefill={editor.prefill}
             maxfilesize={data.maxfilesize}
             onClose={(savedId) => {
               setEditor(null)

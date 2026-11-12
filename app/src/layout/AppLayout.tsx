@@ -10,6 +10,7 @@ import {
   UnstyledButton,
 } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
+import { IconExternalLink } from '@tabler/icons-react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useOverview } from '../api/hooks'
 import { Logo } from '../components/Logo'
@@ -30,18 +31,32 @@ function SidebarSection({ title, items, pathname }: { title?: string; items: Nav
           {title}
         </Text>
       )}
-      {items.map((item) => (
-        <MantineNavLink
-          key={item.to}
-          component={NavLink}
-          to={item.to}
-          end={item.end}
-          label={item.label}
-          leftSection={<item.icon size={18} aria-hidden />}
-          active={isActive(pathname, item)}
-          style={{ borderRadius: 'var(--mantine-radius-md)' }}
-        />
-      ))}
+      {items.map((item) =>
+        item.external ? (
+          <MantineNavLink
+            key={item.to}
+            component="a"
+            href={item.to}
+            target="_blank"
+            rel="noopener noreferrer"
+            label={item.label}
+            leftSection={<item.icon size={18} aria-hidden />}
+            rightSection={<IconExternalLink size={14} aria-label="öffnet in neuem Tab" />}
+            style={{ borderRadius: 'var(--mantine-radius-md)' }}
+          />
+        ) : (
+          <MantineNavLink
+            key={item.to}
+            component={NavLink}
+            to={item.to}
+            end={item.end}
+            label={item.label}
+            leftSection={<item.icon size={18} aria-hidden />}
+            active={isActive(pathname, item)}
+            style={{ borderRadius: 'var(--mantine-radius-md)' }}
+          />
+        ),
+      )}
     </Box>
   )
 }

@@ -8,6 +8,7 @@
 
 - **Lernende** führen pro Kurs eine Mappe mit sieben Registern: Arbeitsergebnisse, Reflexionsbögen, Lernstrategien, Lernziele, Feedback erhalten, Lerntagebuch, Nachweise & Zertifikate. Jeder Eintrag hat Leitfragen, eine Selbsteinschätzung, Anhänge und Links. Einträge sind zuerst Entwurf und werden durch **Einreichen** für den Lerncoach sichtbar.
 - **Lerncoaches** sehen in der Lerndoku unter **Portfolios** die eingereichten Einträge und geben eine Rückmeldung mit Status: Rückmeldung, bitte überarbeiten oder abgeschlossen.
+- **Verbindung zum [MMBbS Teaching Assistant](https://github.com/Herr-FR/Gopilot_teaching-assistent)**: Im Check-in und Check-out am Beamer zeigt der Teaching Assistant einen QR-Code, der bei den Lernenden einen vorausgefüllten Portfolio-Eintrag öffnet (Lernstrategie des Tages bzw. Lerntagebuch mit den Check-out-Fragen). Beide Werkzeuge nutzen dieselbe Liste von Lernstrategien. Lehrkräfte finden den Teaching Assistant im Menü unter **Unterrichtsassistent**. Die Werkzeuge bleiben getrennt: Der Teaching Assistant speichert weiterhin nichts auf einem Server.
 - **Alles liegt in Moodle**: Einträge und Rückmeldungen in eigenen Plugin-Tabellen, Anhänge im Moodle-Dateisystem, mit Datenschutz-Export und -Löschung.
 
 ### Mitwirkende

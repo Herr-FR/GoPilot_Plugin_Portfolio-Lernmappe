@@ -82,3 +82,46 @@ describe('Portfolio', () => {
     })
   })
 })
+
+describe('Portfolio-Links aus dem Teaching Assistant', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 12, 10, 0))
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('/portfolio/neu/strategie?name=… fragt nach dem Kurs und füllt die Strategie mit Beschreibung vor', async () => {
+    const user = userEvent.setup()
+    renderApp('/portfolio/neu/strategie?name=Abruf%C3%BCbung', 11)
+    expect(await screen.findByText(/In welchem Kurs möchtest du den Eintrag „Lernstrategie“ anlegen/)).toBeInTheDocument()
+    await user.click(screen.getByText('LF5 Software zur Verwaltung von Daten anpassen'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText(/Titel/)).toHaveValue('Lernstrategie: Abrufübung')
+    expect(within(dialog).getByLabelText('Welche Lernstrategie habe ich genutzt?')).toHaveValue('Abrufübung')
+    expect(within(dialog).getByText(/Klapp deine Unterlagen zu/)).toBeInTheDocument()
+  })
+
+  it('/portfolio/neu/tagebuch öffnet einen Eintrag mit den Check-out-Fragen', async () => {
+    renderApp('/portfolio/neu/tagebuch', 11)
+    await userEvent.click(await screen.findByText('LF5 Software zur Verwaltung von Daten anpassen'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText(/Titel/)).toHaveValue('Check-out 12.11.2026')
+    expect(within(dialog).getByLabelText('Das nehme ich mit')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Das ist mir noch unklar')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Damit will ich mich intensiver auseinandersetzen')).toBeInTheDocument()
+  })
+
+  it('übernimmt eine eigene Strategie mit Beschreibung aus dem Link', async () => {
+    renderApp('/portfolio/101?neu=strategie&name=Lernplakat&text=Ein%20Plakat%20gestalten', 11)
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText('Welche Lernstrategie habe ich genutzt?')).toHaveValue('Lernplakat')
+    expect(within(dialog).getByText('Ein Plakat gestalten')).toBeInTheDocument()
+  })
+
+  it('zeigt Lehrkräften den Link zum Unterrichtsassistenten', async () => {
+    renderApp('/lerndoku/101', 2)
+    const link = await screen.findByRole('link', { name: /Unterrichtsassistent/ })
+    expect(link).toHaveAttribute('href', 'https://herr-fr.github.io/Gopilot_teaching-assistent/')
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+})

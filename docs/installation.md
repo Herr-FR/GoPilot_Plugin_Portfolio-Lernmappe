@@ -166,6 +166,8 @@ $env:VITE_MOODLE_URL = 'https://moodle.schule.de'; npm run build
 
 `VITE_MOODLE_URL` ist die Adresse, unter der Moodle im Browser aufgerufen wird, ohne Schrägstrich am Ende. Das Ergebnis liegt in `app/dist/`.
 
+Optional: `VITE_TEACHING_ASSISTANT_URL` setzt die Adresse des MMBbS Teaching Assistant für den Menüpunkt **Unterrichtsassistent** der Lehrkräfte. Ohne Angabe ist es `https://herr-fr.github.io/Gopilot_teaching-assistent/`, mit leerem Wert (`VITE_TEACHING_ASSISTANT_URL=`) entfällt der Menüpunkt.
+
 ### 4.2 Hochladen
 
 Den **Inhalt** von `app/dist/` in das Wurzelverzeichnis des Webspaces kopieren, sodass `https://gopilot.schule.de/index.html` und `https://gopilot.schule.de/sw.js` erreichbar sind.

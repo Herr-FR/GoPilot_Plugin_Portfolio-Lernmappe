@@ -117,12 +117,15 @@ export const PORTFOLIO_CATEGORIES: PortfolioCategoryInfo[] = [
     one: 'Tagebucheintrag',
     icon: IconBook,
     color: 'violet',
-    hint: 'Kurze, regelmäßige Notizen zu deinem Lernen.',
+    hint: 'Kurze, regelmäßige Notizen zu deinem Lernen, zum Beispiel nach dem Check-out am Ende der Stunde.',
     selfassessment: false,
+    // Same questions as the check-out of the MMBbS Teaching Assistant.
     questions: [
-      { key: 'heute', label: 'Was habe ich gemacht?', placeholder: '' },
-      { key: 'erkenntnis', label: 'Meine wichtigste Erkenntnis', placeholder: '' },
-      { key: 'frage', label: 'Was ist noch offen?', placeholder: '' },
+      { key: 'heute', label: 'Was haben wir heute gemacht?', placeholder: 'Thema, Aufgabe, Lernsituation …' },
+      { key: 'lichtblick', label: 'Lichtblicke', placeholder: 'Was war heute richtig gut? Wem möchtest du danken?' },
+      { key: 'erkenntnis', label: 'Das nehme ich mit', placeholder: 'Was habe ich heute gelernt, das ich behalten und anwenden will?' },
+      { key: 'frage', label: 'Das ist mir noch unklar', placeholder: 'Welche Frage ist für mich heute offen geblieben?' },
+      { key: 'vertiefen', label: 'Damit will ich mich intensiver auseinandersetzen', placeholder: 'Welches Thema möchte ich vertiefen, und warum?' },
     ],
   },
   {
@@ -144,20 +147,80 @@ export function categoryInfo(key: string): PortfolioCategoryInfo {
   return PORTFOLIO_CATEGORIES.find((c) => c.key === key) ?? PORTFOLIO_CATEGORIES[0]
 }
 
-/** Suggestions for the strategy name. */
-export const LEARNING_STRATEGIES = [
-  'Karteikarten / Wiederholen in Abständen',
-  'Mindmap',
-  'Feynman-Methode (einfach erklären)',
-  'Selbsttest / Abfragen',
-  'Zusammenfassung schreiben',
-  'Visualisierung / Sketchnotes',
-  'Pomodoro-Technik',
-  'Lernen mit Beispielen',
-  'Lernpartner / Lerngruppe',
-  'Fragen an den Text stellen',
-  'KI als Lernpartner (Ergebnisse kritisch prüfen)',
+export interface LearningStrategy {
+  name: string
+  text: string
+  /** Source with more information, '' = none. */
+  link: string
+}
+
+const LS_URL = 'https://www.learningscientists.org/downloadable-materials'
+
+/**
+ * Learning strategies, the same list as in the MMBbS Teaching Assistant (Lernstrategie des Tages),
+ * so that a strategy from the check-in can be recorded in the portfolio by name.
+ */
+export const LEARNING_STRATEGIES: LearningStrategy[] = [
+  { name: 'Verteiltes Lernen', text: 'Lerne lieber mehrmals kurz als einmal lange. Wiederhole den Stoff nach einem Tag, nach einer Woche und noch einmal vor der Prüfung.', link: LS_URL },
+  { name: 'Abrufübung', text: 'Klapp deine Unterlagen zu und schreib auf, was du noch weißt. Erst danach vergleichst du und ergänzt, was gefehlt hat. Das Erinnern selbst festigt das Wissen.', link: 'https://www.th-koeln.de/mam/downloads/deutsch/studium/rundumsstudium/schluesselkompetenzen/arbeitstechniken_testeffekt.pdf' },
+  { name: 'Warum-Fragen stellen', text: 'Frag dich bei jedem neuen Inhalt: Warum ist das so? Wie hängt das mit dem zusammen, was ich schon weiß? Beantworte die Fragen in eigenen Worten.', link: LS_URL },
+  { name: 'Gemischt üben', text: 'Übe verschiedene Aufgabentypen durcheinander statt immer denselben Typ hintereinander. So lernst du zu erkennen, welcher Lösungsweg wann passt.', link: LS_URL },
+  { name: 'Konkrete Beispiele', text: 'Such zu jedem Fachbegriff ein eigenes Beispiel aus deinem Alltag oder deinem Betrieb. Erkläre, was genau an diesem Beispiel typisch ist.', link: LS_URL },
+  { name: 'Wort und Bild verbinden', text: 'Zeichne zu einem Inhalt eine Skizze, ein Schaubild oder eine Zeitleiste und erkläre sie in Worten. Bild und Text zusammen bleiben besser im Kopf.', link: LS_URL },
+  { name: 'Lernkartei', text: 'Schreib Fragen auf Karteikarten. Gewusste Karten wandern ein Fach weiter und kommen seltener dran, nicht gewusste wandern zurück ins erste Fach.', link: '' },
+  { name: 'SQ3R-Lesemethode', text: 'Verschaff dir einen Überblick, stell Fragen an den Text, lies gezielt, gib das Gelesene in eigenen Worten wieder und wiederhole es. So liest du Fachtexte mit einem Ziel.', link: 'https://uni-jena.de/unijenamedia/325182/sq3r-methode-texte-effektiv-lesen.pdf' },
+  { name: 'Lernen durch Erklären', text: 'Erkläre den Inhalt einer Mitschülerin oder einem Mitschüler so, dass er ohne Vorwissen verständlich ist. Wo du ins Stocken kommst, steckt eine Lücke.', link: '' },
+  { name: 'Pomodoro-Technik', text: 'Arbeite 25 Minuten konzentriert an einer Aufgabe, das Handy liegt weg. Dann folgen 5 Minuten Pause. Nach vier Runden machst du eine längere Pause.', link: 'https://www.owl.tu-darmstadt.de/media/owl/schreibtechniken_und__uebungen/Pomodoro-Technik.pdf' },
+  { name: 'Mindmap', text: 'Schreib das Thema in die Mitte und ordne die Unterbegriffe als Äste darum. So siehst du Zusammenhänge auf einen Blick und merkst, wo noch etwas fehlt.', link: '' },
+  { name: 'In drei Sätzen zusammenfassen', text: 'Fass einen Abschnitt in drei Sätzen zusammen, ohne in den Text zu schauen. Gelingt es in eigenen Worten, hast du ihn verstanden.', link: '' },
 ]
+
+/** Strategy of the list by name (case-insensitive), undefined for own strategies. */
+export function strategyByName(name: string): LearningStrategy | undefined {
+  const n = name.trim().toLowerCase()
+  return n ? LEARNING_STRATEGIES.find((s) => s.name.toLowerCase() === n) : undefined
+}
+
+/** Values to pre-fill a new entry, e.g. from a QR code of the Teaching Assistant. */
+export interface PortfolioPrefill {
+  category: PortfolioCategory
+  title: string
+  answers: Record<string, string>
+  /** Description of a strategy that is not in LEARNING_STRATEGIES. */
+  strategyText: string
+}
+
+/** Query parameters of a pre-filled new entry (see docs/anleitung/app-gopilot.md). */
+export const PREFILL_PARAMS = ['neu', 'name', 'text', 'titel'] as const
+
+function todayLabel(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
+}
+
+/**
+ * Reads `?neu=<category>&name=<strategy>&text=<description>&titel=<title>`.
+ * Returns null without a valid category. Values are cut to the plugin's limits.
+ */
+export function parsePrefill(params: URLSearchParams): PortfolioPrefill | null {
+  const key = params.get('neu') ?? ''
+  if (!PORTFOLIO_CATEGORIES.some((c) => c.key === key)) return null
+  const category = key as PortfolioCategory
+  const name = (params.get('name') ?? '').trim().slice(0, 255)
+  const text = (params.get('text') ?? '').trim().slice(0, 1000)
+  let title = (params.get('titel') ?? '').trim().slice(0, 255)
+  const answers: Record<string, string> = {}
+  let strategyText = ''
+  if (category === 'strategie' && name) {
+    const known = strategyByName(name)
+    answers.strategie = known?.name ?? name
+    if (!known) strategyText = text
+    if (!title) title = `Lernstrategie: ${answers.strategie}`
+  }
+  if (category === 'tagebuch' && !title) title = `Check-out ${todayLabel()}`
+  return { category, title, answers, strategyText }
+}
 
 /** Display of a status for learners and coaches. */
 export const PORTFOLIO_STATUS: Record<PortfolioStatus, { label: string; coachLabel: string; color: string }> = {

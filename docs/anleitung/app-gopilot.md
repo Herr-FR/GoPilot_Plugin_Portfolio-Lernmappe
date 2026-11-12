@@ -128,6 +128,15 @@ Solange dein Lerncoach noch nicht geantwortet hat, kannst du einen eingereichten
 
 Kommt eine Rückmeldung, bekommst du eine Benachrichtigung, und der Eintrag zeigt **Neue Rückmeldung**. Bittet dein Lerncoach dich, etwas zu **überarbeiten**, kannst du den Eintrag wieder ändern und **erneut einreichen**. Dann entsteht eine neue Version. Ist ein Eintrag **abgeschlossen**, kannst du ihn nicht mehr ändern.
 
+### Einträge per QR-Code aus dem Unterricht
+
+Zeigt deine Lehrkraft im Check-in oder Check-out einen **GoPilot-QR-Code** am Beamer, scanne ihn mit dem Handy. GoPilot öffnet dann direkt einen neuen Eintrag:
+
+- **Check-in:** ein Eintrag unter **Lernstrategien** mit der Lernstrategie des Tages und ihrer Beschreibung. Nach der Stunde ergänzt du, wie gut sie für dich funktioniert hat.
+- **Check-out:** ein **Lerntagebuch**-Eintrag mit denselben Fragen wie am Beamer: Lichtblicke, Das nehme ich mit, Das ist mir noch unklar, Damit will ich mich intensiver auseinandersetzen.
+
+Hast du mehrere Kurse, wählst du zuerst den Kurs. Der Eintrag ist ein Entwurf, bis du ihn einreichst.
+
 ## Lernbiografie
 
 Unter **Mehr → Lernbiografie** siehst du alle deine Wochen untereinander: Ziel, Plan mit Ergebnis, Reflexionen und Feedback.
@@ -191,6 +200,21 @@ Unter jedem Eintrag schreiben Sie Ihre **Rückmeldung** und wählen einen **Stat
 - **Abgeschlossen:** Der Eintrag ist fertig. Hier darf die Rückmeldung auch leer sein.
 
 Die:der Lernende wird benachrichtigt. Das Portfolio einer einzelnen Person erreichen Sie über ihren Namen oder in der Detailansicht über **Portfolio**. Entwürfe sehen Sie nicht, nur eingereichte Einträge. Neue Einreichungen meldet GoPilot Ihnen im Moodle-Benachrichtigungsbereich.
+
+## Unterrichtsassistent
+
+Im Menü finden Sie unter **Lerncoach** den Link **Unterrichtsassistent**. Er öffnet den [MMBbS Teaching Assistant](https://github.com/Herr-FR/Gopilot_teaching-assistent) für Tafel und Beamer in einem neuen Tab. Das ist ein eigenes Werkzeug: Seine Daten bleiben im Browser Ihres Geräts und gehen nicht an GoPilot oder Moodle.
+
+Damit Lernende ihren Check-in oder Check-out in GoPilot festhalten, tragen Sie im Teaching Assistant unter **Einstellungen** die Adresse Ihrer GoPilot-App ein. Danach gibt es im Check-in und Check-out den Knopf **GoPilot-QR**. Er zeigt einen QR-Code, der bei den Lernenden einen vorausgefüllten Portfolio-Eintrag öffnet.
+
+Die Links haben diese Form, Sie können sie auch selbst verteilen, zum Beispiel in Moodle:
+
+| Link | öffnet |
+|---|---|
+| `{app}/portfolio/neu/tagebuch` | Lerntagebuch-Eintrag mit den Check-out-Fragen |
+| `{app}/portfolio/neu/strategie?name=Abrufübung` | Eintrag unter Lernstrategien mit dieser Strategie; Strategien aus der gemeinsamen Liste bringen ihre Beschreibung mit |
+| `{app}/portfolio/neu/strategie?name=…&text=…` | eigene Strategie mit Beschreibung |
+| `{app}/portfolio/neu/{register}?titel=…` | beliebiges Register (`ergebnis`, `reflexion`, `strategie`, `ziel`, `feedback`, `tagebuch`, `nachweis`) mit Titel |
 
 ## Kurseinstellungen
 
