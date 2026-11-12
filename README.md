@@ -1,6 +1,8 @@
 # GoPilot mit Portfolio-Lernmappe
 
 > **Hinweis:** Dieses Repository ist eine Erweiterung von [jtuttas/gopilot](https://github.com/jtuttas/gopilot) (Jörg Tuttas). Es enthält GoPilot vollständig und zusätzlich die **Portfolio-Lernmappe** (Plugin-Version 0.7.0). Lizenz wie im Original: GNU GPL v3 oder später (siehe Dateiköpfe im Plugin).
+>
+> **Idee und Konzept der Portfolio-Lernmappe:** [Herr-FR](https://github.com/Herr-FR)
 
 ## Was die Portfolio-Lernmappe ergänzt
 
