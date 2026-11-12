@@ -1,8 +1,9 @@
 name: App auf GitHub Pages
 
 # Baut die PWA und veröffentlicht sie unter https://<owner>.github.io/<repo>/.
-# Ist die Repository-Variable MOODLE_URL gesetzt (Settings → Secrets and variables → Actions → Variables),
-# spricht die App mit dieser Moodle-Instanz. Sonst läuft sie im Demo-Modus mit Beispieldaten.
+# Die App spricht mit der Moodle-Instanz aus der Repository-Variable MOODLE_URL
+# (Settings → Secrets and variables → Actions → Variables), ohne Variable mit DEFAULT_MOODLE_URL unten.
+# Für den Demo-Modus mit Beispieldaten die Variable MOODLE_URL auf "demo" setzen.
 
 on:
   push:
@@ -40,11 +41,14 @@ jobs:
 
       - name: App bauen
         run: |
+          if [ "$MOODLE_URL" = "demo" ]; then
+            MOODLE_URL=""
+          fi
           if [ -n "$MOODLE_URL" ]; then
             echo "Moodle: $MOODLE_URL"
             export VITE_MOODLE_URL="$MOODLE_URL"
           else
-            echo "Keine Repository-Variable MOODLE_URL gesetzt: Demo-Modus mit Beispieldaten."
+            echo "Demo-Modus mit Beispieldaten."
             export VITE_MOCK=1
           fi
           # --base: die App liegt unter /<repo>/, nicht an der Domain-Wurzel.
@@ -53,7 +57,7 @@ jobs:
           cp dist/index.html dist/404.html
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-          MOODLE_URL: ${{ vars.MOODLE_URL }}
+          MOODLE_URL: ${{ vars.MOODLE_URL || 'https://service.joerg-tuttas.de/moodle' }}
 
       - uses: actions/configure-pages@v5
         with:

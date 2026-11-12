@@ -23,6 +23,17 @@ describe('API-Client (echtes Moodle)', () => {
     setAuthFailureHandler(null)
   })
 
+  it('meldet nicht ab, wenn nur die Portfolio-Funktionen im Moodle fehlen (Plugin älter als 0.7.0)', async () => {
+    const onFail = vi.fn()
+    setAuthFailureHandler(onFail)
+    fetchMock.mockResolvedValue(
+      jsonResponse({ exception: 'webservice_access_exception', errorcode: 'accessexception', message: 'Zugriffskontrollausnahme' }),
+    )
+    await expect(api.getPortfolio(2)).rejects.toMatchObject({ errorcode: 'portfolionotinstalled' })
+    expect(onFail).not.toHaveBeenCalled()
+    expect(tokenStore.get()).toBe('abc123')
+  })
+
   it('sendet POST form-urlencoded mit wstoken als Formularfeld', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }))
     await api.savePlan('2026-11-02', 'Ziel', [5, 7])

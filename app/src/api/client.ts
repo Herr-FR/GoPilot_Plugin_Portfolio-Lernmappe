@@ -61,8 +61,23 @@ async function post(path: string, body: URLSearchParams): Promise<unknown> {
   }
 }
 
-function handleResult<T>(data: unknown): T {
+/**
+ * Portfolio functions exist from plugin 0.7.0 on. On an older plugin Moodle answers
+ * `accessexception` ("function not in service"): that must not log the user out.
+ */
+function isMissingPortfolioFunction(wsfunction: string, data: MoodleException): boolean {
+  return data.errorcode === 'accessexception' && /^local_gopilot_.*portfolio/.test(wsfunction)
+}
+
+function handleResult<T>(data: unknown, wsfunction = ''): T {
   if (isException(data)) {
+    if (isMissingPortfolioFunction(wsfunction, data)) {
+      throw new MoodleError(
+        'Die Portfolio-Lernmappe ist in diesem Moodle noch nicht installiert. Dafür braucht es das GoPilot-Plugin ab Version 0.7.0. Bitte wende dich an die Moodle-Administration.',
+        'portfolionotinstalled',
+        data.exception,
+      )
+    }
     if (LOGOUT_ERRORCODES.has(data.errorcode)) {
       tokenStore.clear()
       authFailureHandler?.()
@@ -81,10 +96,10 @@ export async function call<T>(wsfunction: string, params: Params = {}): Promise<
   }
   if (isMockMode()) {
     const { mockCall } = await import('./mock/server')
-    return handleResult<T>(await mockCall(wsfunction, params, token))
+    return handleResult<T>(await mockCall(wsfunction, params, token), wsfunction)
   }
   const body = toFormBody({ wstoken: token, wsfunction, moodlewsrestformat: 'json', ...params })
-  return handleResult<T>(await post('/webservice/rest/server.php', body))
+  return handleResult<T>(await post('/webservice/rest/server.php', body), wsfunction)
 }
 
 const LOGIN_MESSAGES: Record<string, string> = {
