@@ -10,6 +10,14 @@
 - **Lerncoaches** sehen in der Lerndoku unter **Portfolios** die eingereichten Einträge und geben eine Rückmeldung mit Status: Rückmeldung, bitte überarbeiten oder abgeschlossen.
 - **Alles liegt in Moodle**: Einträge und Rückmeldungen in eigenen Plugin-Tabellen, Anhänge im Moodle-Dateisystem, mit Datenschutz-Export und -Löschung.
 
+### Mitwirkende
+
+| Person | Beitrag |
+|---|---|
+| [Herr-FR](https://github.com/Herr-FR) | Idee und Konzept der Portfolio-Lernmappe |
+| [Jörg Tuttas](https://github.com/jtuttas) | GoPilot (App und Moodle-Plugin), auf dem die Erweiterung aufbaut |
+| Claude (Anthropic) | Umsetzung der Erweiterung nach Vorgabe von Herr-FR |
+
 ### Einblick
 
 **Lernende: die Mappe eines Kurses.** Register mit Zählern, Status jedes Eintrags (Entwurf, eingereicht, bitte überarbeiten …) und neue Rückmeldungen auf einen Blick.
